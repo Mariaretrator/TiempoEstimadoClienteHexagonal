@@ -1,17 +1,39 @@
 package dulceramos;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-public class Main {
-    public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
+import dulceramos.adaptadores.notificacion.AdaptadorNotificacionCliente;
+import dulceramos.adaptadores.redes.AdaptadorClienteUdp;
+import dulceramos.adaptadores.redes.CanalUdp;
+import dulceramos.adaptadores.redes.ProtocoloUdpMapper;
+import dulceramos.aplicacion.mapper.ClienteMapper;
+import dulceramos.aplicacion.servicios.ClienteViajeService;
+import dulceramos.ClienteFrame;
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
-        }
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import javax.swing.SwingUtilities;
+
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class Main {
+    public static void main(final String[] args) {
+        final AdaptadorNotificacionCliente notificador = new AdaptadorNotificacionCliente();
+        final AdaptadorClienteUdp udp = new AdaptadorClienteUdp(new CanalUdp(3000), new ProtocoloUdpMapper());
+
+        final ExecutorService executor = Executors.newSingleThreadExecutor(tarea -> {
+            final Thread hilo = new Thread(tarea, "cliente-udp");
+            hilo.setDaemon(true);
+            return hilo;
+        });
+
+        // Pasamos los 4 argumentos exactos requeridos por ClienteViajeService
+        final ClienteViajeService servicio = new ClienteViajeService(udp, notificador, new ClienteMapper(), executor);
+
+        SwingUtilities.invokeLater(() -> {
+            final ClienteFrame frame = new ClienteFrame(servicio, servicio);
+            notificador.registrar(frame);
+            frame.setVisible(true);
+        });
     }
 }
